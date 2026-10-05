@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -26,6 +27,12 @@ public class MainActivity extends Activity {
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
+        if (Build.VERSION.SDK_INT >= 28) {
+            WindowManager.LayoutParams attributes = getWindow().getAttributes();
+            attributes.layoutInDisplayCutoutMode =
+                    WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+            getWindow().setAttributes(attributes);
+        }
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
                 WindowManager.LayoutParams.FLAG_FULLSCREEN);
         enterImmersiveMode();
@@ -69,6 +76,7 @@ public class MainActivity extends Activity {
             }
             @Override public void onPageFinished(WebView view, String url) {
                 Log.i("PokerogueLive", "Loaded " + url);
+                installLandscapeFill(view);
             }
             @Override public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
                 if (request.isForMainFrame()) {
@@ -106,6 +114,32 @@ public class MainActivity extends Activity {
             if (url.startsWith("https://")) openExternal(Uri.parse(url));
             else Toast.makeText(this, "此版本暂不支持网页内导出文件", Toast.LENGTH_LONG).show();
         });
+    }
+
+    private void installLandscapeFill(WebView view) {
+        String script = "(function(){"
+                + "if(window.__pokerogueLiveFill)return;window.__pokerogueLiveFill=true;"
+                + "var observer=('ResizeObserver'in window)?new ResizeObserver(function(){setTimeout(fill,80)}):null;"
+                + "function fill(){"
+                + "var app=document.getElementById('app');if(!app)return false;"
+                + "var canvas=app.querySelector('canvas');if(!canvas)return false;"
+                + "app.style.transform='';"
+                + "if(innerWidth<=innerHeight)return true;"
+                + "var width=canvas.getBoundingClientRect().width;"
+                + "if(width<1)return false;"
+                + "var scale=innerWidth/width;"
+                + "app.style.transformOrigin='center center';"
+                + "app.style.transform='scaleX('+scale+')';"
+                + "document.documentElement.style.overflow='hidden';"
+                + "document.body.style.overflow='hidden';"
+                + "return true;"
+                + "}"
+                + "var timer=setInterval(function(){if(fill()){clearInterval(timer);"
+                + "var canvas=document.querySelector('#app canvas');if(canvas&&observer)observer.observe(canvas);"
+                + "}},300);"
+                + "window.addEventListener('resize',function(){setTimeout(fill,200)});"
+                + "})();";
+        view.evaluateJavascript(script, null);
     }
 
     private boolean isOfficialPage(Uri uri) {
