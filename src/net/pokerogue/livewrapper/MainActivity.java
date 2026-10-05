@@ -5,8 +5,10 @@ import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.util.Log;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceError;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -44,6 +46,15 @@ public class MainActivity extends Activity {
                 if (isOfficialPage(request.getUrl())) return false;
                 openExternal(request.getUrl());
                 return true;
+            }
+            @Override public void onPageFinished(WebView view, String url) {
+                Log.i("PokerogueLive", "Loaded " + url);
+            }
+            @Override public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
+                if (request.isForMainFrame()) {
+                    Log.e("PokerogueLive", "Page load failed: " + error.getDescription());
+                    Toast.makeText(MainActivity.this, "官网加载失败，请检查网络后重试", Toast.LENGTH_LONG).show();
+                }
             }
             @Override public boolean onRenderProcessGone(WebView view, android.webkit.RenderProcessGoneDetail detail) {
                 container.removeView(view);
