@@ -1,8 +1,9 @@
 $ErrorActionPreference = 'Stop'
 $root = $PSScriptRoot
-$sdk = 'D:\Android_SDK'
-$jdk = 'D:\Android_stdio\jbr\bin'
-$env:JAVA_HOME = 'D:\Android_stdio\jbr'
+$sdk = if ($env:ANDROID_HOME) { $env:ANDROID_HOME } elseif ($env:ANDROID_SDK_ROOT) { $env:ANDROID_SDK_ROOT } else { 'D:\Android_SDK' }
+$javaHome = if ($env:JAVA_HOME) { $env:JAVA_HOME } else { 'D:\Android_stdio\jbr' }
+$jdk = Join-Path $javaHome 'bin'
+$env:JAVA_HOME = $javaHome
 $env:Path = "$jdk;$env:Path"
 $tools = Join-Path $sdk 'build-tools\36.0.0'
 $platform = Join-Path $sdk 'platforms\android-36.1\android.jar'
@@ -27,7 +28,10 @@ if ($LASTEXITCODE -ne 0) { throw 'Dex compilation failed' }
 $unsigned = Join-Path $build 'unsigned.apk'
 $aligned = Join-Path $build 'aligned.apk'
 $output = Join-Path $build 'pokerogue-live.apk'
-& "$tools\aapt2.exe" link -o $unsigned --manifest (Join-Path $root 'AndroidManifest.xml') -I $platform --min-sdk-version 26 --target-sdk-version 35
+$resources = Join-Path $build 'resources.zip'
+& "$tools\aapt2.exe" compile --dir (Join-Path $root 'res') -o $resources
+if ($LASTEXITCODE -ne 0) { throw 'Android resource compilation failed' }
+& "$tools\aapt2.exe" link -o $unsigned --manifest (Join-Path $root 'AndroidManifest.xml') -I $platform -R $resources --min-sdk-version 26 --target-sdk-version 35
 if ($LASTEXITCODE -ne 0) { throw 'APK resource linking failed' }
 Push-Location $dex
 try { & "$jdk\jar.exe" uf $unsigned classes.dex }
